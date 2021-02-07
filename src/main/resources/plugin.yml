@@ -1,0 +1,8 @@
+name: BiliLiveHelper
+version: ${project.version}
+main: net.windit.mcpl.livehelper.LiveHelper
+api-version: 1.16
+load: STARTUP
+commands:
+  livehelper:
+    description: b站直播助手

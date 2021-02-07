@@ -1,0 +1,35 @@
+# 主播玩家名
+host_playername: ""
+# 主播的b站uid
+bili_uid: 0
+# 主播房间号
+# 未解析,不起作用
+room_id: 0
+# 刷怪设置
+summon:
+  # 怪物出生在哪个世界
+  # 如果配置的世界不存在, 将使用默认世界 "world"
+  world: world
+  # 刷怪半径, 以主播(关注刷怪时)或在线玩家(弹幕召唤时)为圆心
+  radius: 10
+  # 关注刷怪
+  follow:
+    # 怪物类型, 随机抽取
+    mobs:
+      - ZOMBIE
+      - CREEPER
+      - SKELETON
+      - ENDERMAN
+  # 弹幕召唤
+  danmu:
+    # 召唤子项名称, 可以任意修改为别的名称, 不重复即可
+    zombie-wave:
+      # 弹幕文本, 只要弹幕包含其文字即可触发
+      text: "尸如潮水"
+      # 弹幕重复次数
+      times: 10
+      # 一个观众是否可重复多次
+      # 尚未开发,不起作用
+      repeat: true
+      # 怪物
+      mob: "ZOMBIE*30"
