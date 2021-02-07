@@ -6,19 +6,18 @@ import com.google.gson.JsonParser;
 import net.windit.bililive.LivePacket;
 import net.windit.bililive.LiveRoom;
 import net.windit.bililive.PacketListener;
-import org.bukkit.command.CommandSender;
 
 import java.util.function.Consumer;
 
-public class PluginPacketListener implements PacketListener {
+public class PluginPacketListener<T> implements PacketListener {
 
-    private Consumer<CommandSender> consumer;
-    private CommandSender sender;
+    private Consumer<T> consumer;
+    private T t;
 
     @Override
     public void onPacket(LivePacket packet, LiveRoom room) {
-        if (consumer != null && sender != null && packet.getOperation() == LivePacket.OPERATION_ENTER_ROOM_RESPONSE) {
-            consumer.accept(sender);
+        if (consumer != null && t != null && packet.getOperation() == LivePacket.OPERATION_ENTER_ROOM_RESPONSE) {
+            consumer.accept(t);
         }
         if (packet.getOperation() == LivePacket.OPERATION_MESSAGE) {
             packet.getDecodedJSON().forEach(jsonStr -> {
@@ -61,8 +60,8 @@ public class PluginPacketListener implements PacketListener {
         Utils.broadcastActionBar(LiveHelper.getInstance().getConfig().getString("enter_room_msg").replaceAll("\\{昵称}", username));
     }
 
-    void setEnterRoomCallback(Consumer<CommandSender> consumer, CommandSender sender) {
+    void setEnterRoomCallback(Consumer<T> consumer, T t) {
         this.consumer = consumer;
-        this.sender = sender;
+        this.t = t;
     }
 }

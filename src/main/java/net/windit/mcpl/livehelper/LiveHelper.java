@@ -168,7 +168,7 @@ public final class LiveHelper extends JavaPlugin {
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             try {
                 LiveRoom room = new LiveRoom(roomId);
-                PluginPacketListener listener = new PluginPacketListener();
+                PluginPacketListener<CommandSender> listener = new PluginPacketListener<>();
                 if (sender != null) {
                     sender.sendMessage(messagePrefix + ChatColor.GREEN + "正尝试建立与主播房间的连接...");
                     listener.setEnterRoomCallback(x -> x.sendMessage(messagePrefix + ChatColor.GREEN + "已建立与主播房间的连接"), sender);
