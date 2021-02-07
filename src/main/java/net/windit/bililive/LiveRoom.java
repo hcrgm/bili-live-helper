@@ -20,21 +20,23 @@ public class LiveRoom extends WebSocketListener {
     private final List<String> wsServers;
     private final List<PacketListener> listeners;
     private final AtomicInteger failedTimes = new AtomicInteger();
+    private final int displayRoomId;
     private ScheduledExecutorService executor;
     private BlockingQueue<LivePacket> packetQueue;
-    private int roomId;
+    private int realRoomId;
     private volatile int popular;
     private ScheduledFuture<?> heartBeatTask;
     private WebSocket ws;
     private Future<?> packetDeliveryTask;
     private boolean reconnect;
+    private boolean closed;
     /**
      * B站服务器鉴权用, 未指定key或key无效服务器会拒绝连接
      */
     private String key;
 
     public LiveRoom(int roomId) {
-        this.roomId = roomId;
+        this.displayRoomId = roomId;
         listeners = new LinkedList<>();
         wsServers = new ArrayList<>();
     }
@@ -56,16 +58,16 @@ public class LiveRoom extends WebSocketListener {
     }
 
     public void connect() throws LiveException {
-        int realRoomId = API.getRealRoomId(this.roomId);
+        int realRoomId = API.getRealRoomId(this.displayRoomId);
         if (realRoomId == -1) {
             throw new LiveException("房间号不存在或获取真实房间号时发生错误.");
         }
-        this.roomId = realRoomId;
+        this.realRoomId = realRoomId;
         API.DanmuConf conf = API.getDanmuConf(realRoomId);
         if (conf == null) {
             throw new LiveException("获取弹幕服务器出错");
         }
-        for (Map<String, ?> map : conf.host_server_list) {
+        for (Map<String, ?> map : conf.serverList) {
             String host = (String) map.get("host");
             int port = ((Double) map.get("wss_port")).intValue();
             wsServers.add("wss://" + host + ":" + port + "/sub");
@@ -76,7 +78,10 @@ public class LiveRoom extends WebSocketListener {
     }
 
     private void tryServers() {
-        Request request = new Request.Builder().url(wsServers.get(failedTimes.get())).build();
+        Request request = new Request.Builder().url(wsServers.get(failedTimes.get()))
+                .removeHeader("User-Agent")
+                .addHeader("User-Agent", API.USER_AGENT)
+                .build();
         API.client.newWebSocket(request, this);
     }
 
@@ -85,7 +90,7 @@ public class LiveRoom extends WebSocketListener {
     }
 
     public int getRoomId() {
-        return roomId;
+        return displayRoomId;
     }
 
     @Override
@@ -93,14 +98,14 @@ public class LiveRoom extends WebSocketListener {
         API.debug("已开启");
         this.ws = webSocket;
         LivePacket.EnterRoom enterRoomRequest = new LivePacket.EnterRoom();
-        enterRoomRequest.roomid = roomId;
+        enterRoomRequest.roomid = realRoomId;
         enterRoomRequest.key = key;
         LivePacket enterRoomPacket = new LivePacket(LivePacket.PROTOCOL_VERSION_HEARTBEAT, LivePacket.OPERATION_ENTER_ROOM, LivePacket.SEQUENCE_ID,
                 API.gson.toJson(enterRoomRequest).getBytes(StandardCharsets.UTF_8));
         if (this.sendPacket(enterRoomPacket)) {
             API.debug("发送成功");
             packetQueue = new LinkedBlockingQueue<>();
-            executor = new ScheduledThreadPoolExecutor(2, API.threadFactory(String.format("LiveRoom %d", roomId)));
+            executor = new ScheduledThreadPoolExecutor(2, API.threadFactory(String.format("LiveRoom %d", realRoomId)));
             packetDeliveryTask = executor.submit(new PacketDeliveryTask());
         } else {
             API.debug("发送失败");
@@ -120,7 +125,12 @@ public class LiveRoom extends WebSocketListener {
 
     public void close() {
         this.ws.close(1000, null);
+        closed = true;
         setReconnect(false);
+    }
+
+    public boolean isClosed() {
+        return closed;
     }
 
     @Override
@@ -197,7 +207,6 @@ public class LiveRoom extends WebSocketListener {
     private class InternalListener implements PacketListener {
         @Override
         public void onPacket(LivePacket packet, LiveRoom room) {
-            API.debug("收到数据包:" + packet.toString());
             if (packet.getOperation() == LivePacket.OPERATION_ENTER_ROOM_RESPONSE) {
                 API.debug(packet.getDecodedJSON().toString());
                 // 收到进房回应, 开始心跳任务

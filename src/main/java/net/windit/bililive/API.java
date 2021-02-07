@@ -3,6 +3,7 @@ package net.windit.bililive;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.annotations.SerializedName;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -20,7 +21,7 @@ public final class API {
     public final static String BILI_FOLLWERS_URI = "https://api.bilibili.com/x/relation/followers?vmid=";
     public final static String BILI_USER_CARD_URI = "https://api.bilibili.com/x/web-interface/card?mid=";
     public static final Gson gson = new Gson();
-    private final static String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.146 Safari/537.36 Edg/88.0.705.62";
+    public final static String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.146 Safari/537.36 Edg/88.0.705.62";
     private final static ReentrantLock LOCK = new ReentrantLock();
     public static OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
@@ -144,12 +145,14 @@ public final class API {
     }
 
     public static class DanmuConf {
-        public List<Map<String, ?>> host_server_list;
+        @SerializedName("host_server_list")
+        public List<Map<String, ?>> serverList;
         public String token;
     }
 
     public static class UserInfo {
-        public long mid;
+        @SerializedName("mid")
+        public long uid;
         public String name;
         public int fans;
     }

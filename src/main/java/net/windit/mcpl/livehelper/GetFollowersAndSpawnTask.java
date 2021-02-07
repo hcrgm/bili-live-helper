@@ -49,10 +49,10 @@ public class GetFollowersAndSpawnTask implements Runnable {
                                 EntityType type = EntityType.fromName(mobs.get(random.nextInt(mobs.size())));
                                 if (type != null) {
                                     // 在一个圆的区域内随机生成, 相对圆心的x,z坐标偏移量: [-radius,radius]
-                                    int radius = plugin.getConfig().getInt("summon.radius",10);
+                                    int radius = plugin.getConfig().getInt("summon.radius", 10);
                                     int x = location.getBlockX() + random.nextInt(radius - (-radius) + 1) + (-radius);
                                     int z = location.getBlockZ() + random.nextInt(radius - (-radius) + 1) + (-radius);
-                                    int y = LiveHelper.getHighestSolidBlockY(location.getWorld(), x, z) + 1;
+                                    int y = Utils.getHighestSolidBlockY(location.getWorld(), x, z) + 1;
                                     Location randomLocation = location.clone();
                                     randomLocation.setX(x);
                                     randomLocation.setY(y + 0.2);
@@ -63,9 +63,10 @@ public class GetFollowersAndSpawnTask implements Runnable {
                         }
                     });
                 }
-                Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.GOLD + nickname +
-                        ChatColor.GREEN + " 新增了 " + ChatColor.GOLD + delta +
-                        ChatColor.GREEN + " 名随从! 当前随从数: " + ChatColor.GOLD + followers);
+                Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("fans_grow_msg")
+                        .replaceAll("\\{昵称}", nickname)
+                        .replaceAll("\\{涨粉数}", String.valueOf(delta))
+                        .replaceAll("\\{当前粉丝数}", String.valueOf(followers))));
             }
         }
         lastFollowers = followers;
