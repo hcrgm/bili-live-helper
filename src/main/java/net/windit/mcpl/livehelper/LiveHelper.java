@@ -73,8 +73,9 @@ public final class LiveHelper extends JavaPlugin {
                     int times = section.getInt("times", 2);
                     String id = (String) entry.getKey();
                     int amount = Integer.parseInt(mobCfg[1]);
+                    int cooldown = section.getInt("cooldown", 10);
                     String keyword = section.getString("keyword");
-                    DanmuSummonActivity activity = new DanmuSummonActivity(id, displayName, keyword, times, EntityType.fromName(mob), amount);
+                    DanmuSummonActivity activity = new DanmuSummonActivity(id, displayName, keyword, times, EntityType.fromName(mob), amount, cooldown);
                     activities.put(keyword, activity);
                 }
             }

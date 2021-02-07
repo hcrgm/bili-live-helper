@@ -36,9 +36,9 @@ summon:
     # 召唤活动id, 可以任意修改为别的id, 不重复即可
     zombie-wave:
       # 展示给玩家的召唤活动名称
-      activity-name: "尸如潮水"
+      activity-name: "僵尸军团"
       # 弹幕关键字, 只要弹幕包含其文字即可触发
-      keyword: "尸如潮水"
+      keyword: "僵尸军团"
       # 弹幕重复次数
       times: 10
       # 一个观众是否可重复多次

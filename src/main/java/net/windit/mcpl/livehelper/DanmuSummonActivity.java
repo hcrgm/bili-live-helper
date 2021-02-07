@@ -19,16 +19,19 @@ public class DanmuSummonActivity {
     private String id;
     private String name;
     private int times = 0;
+    private int cooldown;
     private String keyword;
     private volatile boolean running;
+    private volatile long lastFinishTime;
 
-    public DanmuSummonActivity(String id, String name, String keyword, int targetTimes, EntityType mobToSpawn, int mobAmount) {
+    public DanmuSummonActivity(String id, String name, String keyword, int targetTimes, EntityType mobToSpawn, int mobAmount, int cooldown) {
         this.id = id;
         this.name = name;
         this.keyword = keyword;
         this.targetTimes = targetTimes;
         this.mobToSpawn = mobToSpawn;
         this.mobAmount = mobAmount;
+        this.cooldown = cooldown;
     }
 
     public boolean isFinished() {
@@ -42,9 +45,17 @@ public class DanmuSummonActivity {
     public void reset() {
         this.times = 0;
         running = false;
+        lastFinishTime = System.currentTimeMillis();
+    }
+
+    public long getLastFinishTime() {
+        return lastFinishTime;
     }
 
     public void increaseTimes(String nickname) {
+        if ((System.currentTimeMillis() - getLastFinishTime()) / 1000.0 < cooldown) {
+            return;
+        }
         running = true;
         if (times++ == 0) {
             Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("summon.danmu.start-msg-format")
@@ -54,7 +65,7 @@ public class DanmuSummonActivity {
             Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("summon.danmu.running-msg-format")
                     .replaceAll("\\{昵称}", nickname)
                     .replaceAll("\\{活动名}", name)
-                    .replaceAll("\\{剩余次数}", String.valueOf(targetTimes-times))));
+                    .replaceAll("\\{剩余次数}", String.valueOf(targetTimes - times))));
         }
         if (isFinished()) {
             reset();

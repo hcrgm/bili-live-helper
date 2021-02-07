@@ -58,7 +58,7 @@ public class PluginPacketListener implements PacketListener {
     }
 
     private void handleEnterRoom(String username) {
-        Utils.broadcastActionBar(LiveHelper.getInstance().getConfig().getString("enter_room_msg").replaceAll("\\{昵称}",username));
+        Utils.broadcastActionBar(LiveHelper.getInstance().getConfig().getString("enter_room_msg").replaceAll("\\{昵称}", username));
     }
 
     void setEnterRoomCallback(Consumer<CommandSender> consumer, CommandSender sender) {

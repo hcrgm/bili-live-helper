@@ -20,7 +20,7 @@ public class Utils {
 
     public static void broadcastActionBar(String msg) {
         Bukkit.getOnlinePlayers().forEach(player -> {
-            BaseComponent[] components = TextComponent.fromLegacyText(ChatColor.translateAlternateColorCodes('&',msg));
+            BaseComponent[] components = TextComponent.fromLegacyText(ChatColor.translateAlternateColorCodes('&', msg));
             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, components);
         });
     }
