@@ -211,10 +211,4 @@ public class LivePacket {
         public int type = 2;
         public String key;
     }
-
-    public static class PacketDecodeException extends Exception {
-        public PacketDecodeException(String s) {
-            super(s);
-        }
-    }
 }

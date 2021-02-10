@@ -3,11 +3,13 @@ package net.windit.mcpl.livehelper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.windit.bililive.API;
 import net.windit.bililive.LivePacket;
 import net.windit.bililive.LiveRoom;
 import net.windit.bililive.PacketListener;
 
 import java.util.function.Consumer;
+import java.util.logging.Level;
 
 public class PluginPacketListener<T> implements PacketListener {
 
@@ -31,6 +33,7 @@ public class PluginPacketListener<T> implements PacketListener {
                         JsonArray userInfo = info.get(2).getAsJsonArray();
                         long uid = userInfo.get(0).getAsLong();
                         String userName = userInfo.get(1).getAsString();
+                        API.debug(userName + " " + msg);
                         handleDanmu(userName, msg);
                         break;
                     // 进房
@@ -42,6 +45,23 @@ public class PluginPacketListener<T> implements PacketListener {
                         String username = data.get("uname").getAsString();
                         handleEnterRoom(username);
                         break;
+                    case "SEND_GIFT":
+                    case "COMBO_SEND":
+                        JsonObject data2 = object.getAsJsonObject("data");
+                        String username2 = data2.get("uname").getAsString();
+                        String giftName;
+                        String action = data2.get("action").getAsString();
+                        int num;
+                        if ("SEND_GIFT".equalsIgnoreCase(cmd)) {
+                            giftName = data2.get("giftName").getAsString();
+                            num = data2.get("num").getAsInt();
+                            handleGift(false, username2, giftName, action, num);
+                        } else {
+                            giftName = data2.get("gift_name").getAsString();
+                            num = data2.get("combo_num").getAsInt();
+                            handleGift(true, username2, giftName, action, num);
+                        }
+                        API.debug(username2 + " " + action + " " + giftName + " " + num);
                     default:
                         break;
                 }
@@ -58,6 +78,17 @@ public class PluginPacketListener<T> implements PacketListener {
 
     private void handleEnterRoom(String username) {
         Utils.broadcastActionBar(LiveHelper.getInstance().getConfig().getString("enter_room_msg").replaceAll("\\{昵称}", username));
+    }
+
+    private void handleGift(boolean combo, String uname, String giftName, String action, int giftNum) {
+        Gift gift = LiveHelper.getGift(giftName);
+        if (gift != null) {
+            try {
+                gift.performOperations(uname, action, giftNum);
+            } catch (Exception e) {
+                LiveHelper.getInstance().getLogger().log(Level.WARNING, "处理礼物数据时出错", e);
+            }
+        }
     }
 
     void setEnterRoomCallback(Consumer<T> consumer, T t) {

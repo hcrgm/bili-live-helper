@@ -8,10 +8,11 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,9 +22,10 @@ public final class LiveHelper extends JavaPlugin {
             ChatColor.WHITE + "]" + " ";
     private static LiveHelper instance;
     private static Map<String, DanmuSummonActivity> activities;
+    private static Map<String, Gift> gifts;
+    private static Map<String, List<Operation>> actions;
     private LiveRoom room;
     private BukkitTask getFollowersTask;
-    private long uid;
 
     public static LiveHelper getInstance() {
         return instance;
@@ -38,22 +40,39 @@ public final class LiveHelper extends JavaPlugin {
         return null;
     }
 
+    public static Gift getGift(String name) {
+        return gifts.get(name);
+    }
+
+    public static List<Operation> getOperations(String actionName) {
+        return actions.get(actionName);
+    }
+
     @Override
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
         API.setDebug(getConfig().getBoolean("debug"));
         activities = new ConcurrentHashMap<>();
+        gifts = new ConcurrentHashMap<>();
+        actions = new ConcurrentHashMap<>();
+        parseActions();
         parseActivities();
+        parseGifts();
+        parseFollow();
         openRoom(Bukkit.getConsoleSender());
-        uid = getConfig().getLong("bili_uid");
+    }
+
+    private void parseFollow() {
+        long uid = getConfig().getLong("bili_uid");
+        String actionToDo = getConfig().getString("follow.do-action");
         if (uid > 0) {
-            getFollowersTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, new GetFollowersAndSpawnTask(uid), 20, 20 * 10);
+            getFollowersTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, new GetFollowersAndSpawnTask(uid, actionToDo), 20, 20 * 10);
         }
     }
 
     private void parseActivities() {
-        Map<String, ?> map = getConfig().getConfigurationSection("summon.danmu").getValues(false);
+        Map<String, ?> map = getConfig().getConfigurationSection("danmu").getValues(false);
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             if (!(entry.getValue() instanceof ConfigurationSection)) {
                 continue;
@@ -65,32 +84,71 @@ public final class LiveHelper extends JavaPlugin {
                     continue;
                 }
             }
-            String[] mobCfg = section.getString("mob").split("\\*");
-            if (mobCfg.length == 2) {
-                String mob = mobCfg[0];
-                EntityType type = EntityType.fromName(mob);
-                if (type != null) {
-                    int times = section.getInt("times", 2);
-                    String id = (String) entry.getKey();
-                    int amount = Integer.parseInt(mobCfg[1]);
-                    int cooldown = section.getInt("cooldown", 10);
-                    String keyword = section.getString("keyword");
-                    DanmuSummonActivity activity = new DanmuSummonActivity(id, displayName, keyword, times, EntityType.fromName(mob), amount, cooldown);
-                    activities.put(keyword, activity);
-                }
+            int times = section.getInt("times", 2);
+            String id = (String) entry.getKey();
+            int cooldown = section.getInt("cooldown", 10);
+            String keyword = section.getString("keyword");
+            int maxDuration = section.getInt("max-duration");
+            String actionToDo = section.getString("do-action");
+            DanmuSummonActivity activity = new DanmuSummonActivity(id, displayName, keyword, times, maxDuration, actionToDo, cooldown);
+            activities.put(keyword, activity);
+        }
+    }
+
+    private void parseGifts() {
+        Map<String, ?> map = getConfig().getConfigurationSection("gifts").getValues(false);
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (!(entry.getValue() instanceof ConfigurationSection)) {
+                continue;
             }
+            ConfigurationSection section = (ConfigurationSection) entry.getValue();
+            String giftName = (String) entry.getKey();
+            String msg = section.getString("msg");
+            String actionToDo = section.getString("do-action");
+            boolean multiply = section.getBoolean("multiply");
+            Gift gift = new Gift(giftName, msg, actionToDo, multiply);
+            gifts.put(giftName, gift);
+        }
+    }
+
+    private void parseActions() {
+        Map<String, ?> map = getConfig().getConfigurationSection("actions").getValues(false);
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (!(entry.getValue() instanceof List)) {
+                continue;
+            }
+            String action = (String) entry.getKey();
+            List<String> list = (List<String>) entry.getValue();
+            List<Operation> operations = new ArrayList<>();
+            list.forEach(x -> {
+                String[] parts = x.split(":");
+                if (parts.length > 0) {
+                    Operation.Type type = Operation.Type.getTypeByName(parts[0]);
+                    String data = null;
+                    if (type != null) {
+                        if (parts.length > 1) {
+                            data = x.substring(x.indexOf(':') + 1);
+                        }
+                        Operation operation = new Operation(type, data);
+                        operations.add(operation);
+                    }
+                }
+            });
+            actions.put(action, operations);
         }
     }
 
     @Override
     public void onDisable() {
-        instance = null;
         closeRoom();
+        instance = null;
         if (getFollowersTask != null) {
             getFollowersTask.cancel();
             getFollowersTask = null;
         }
         activities = null;
+        gifts = null;
+        actions = null;
         API.cleanUp();
     }
 
@@ -140,9 +198,10 @@ public final class LiveHelper extends JavaPlugin {
             getFollowersTask.cancel();
             getFollowersTask = null;
         }
-        uid = getConfig().getLong("bili_uid");
-        getFollowersTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, new GetFollowersAndSpawnTask(uid), 20, 20 * 10);
+        parseActions();
         parseActivities();
+        parseGifts();
+        parseFollow();
         sender.sendMessage(messagePrefix + ChatColor.GREEN + "已重载配置");
     }
 

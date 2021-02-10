@@ -2,36 +2,37 @@ package net.windit.mcpl.livehelper;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Zombie;
-import org.bukkit.inventory.ItemStack;
 
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.List;
 
 public class DanmuSummonActivity {
     private final int targetTimes;
-    private final EntityType mobToSpawn;
-    private final int mobAmount;
-    private String id;
-    private String name;
+    private final String id;
+    private final String name;
+    private final int cooldown;
+    private final int maxDuration;
+    private final String actionToDo;
+    private final String keyword;
     private int times = 0;
-    private int cooldown;
-    private String keyword;
     private volatile boolean running;
     private volatile long lastFinishTime;
 
-    public DanmuSummonActivity(String id, String name, String keyword, int targetTimes, EntityType mobToSpawn, int mobAmount, int cooldown) {
+    public DanmuSummonActivity(String id, String name, String keyword, int targetTimes, int maxDuration, String actionToDo, int cooldown) {
         this.id = id;
         this.name = name;
         this.keyword = keyword;
         this.targetTimes = targetTimes;
-        this.mobToSpawn = mobToSpawn;
-        this.mobAmount = mobAmount;
         this.cooldown = cooldown;
+        this.maxDuration = maxDuration;
+        this.actionToDo = actionToDo;
+        Bukkit.getScheduler().runTaskLaterAsynchronously(LiveHelper.getInstance(), () -> {
+            if (running) {
+                reset();
+                String notice = LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("danmu.timeout-msg-format")
+                        .replaceAll("\\{活动名}", name));
+                Bukkit.broadcastMessage(notice);
+            }
+        }, 20L * maxDuration);
     }
 
     public boolean isFinished() {
@@ -58,40 +59,44 @@ public class DanmuSummonActivity {
         }
         running = true;
         if (times++ == 0) {
-            Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("summon.danmu.start-msg-format")
+            Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("danmu.start-msg-format")
                     .replaceAll("\\{昵称}", nickname)
+                    .replaceAll("\\{限时}", Utils.humanTime(maxDuration))
                     .replaceAll("\\{活动名}", name)));
         } else if (times + 1 <= targetTimes) {
-            Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("summon.danmu.running-msg-format")
+            Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("danmu.running-msg-format")
                     .replaceAll("\\{昵称}", nickname)
                     .replaceAll("\\{活动名}", name)
                     .replaceAll("\\{剩余次数}", String.valueOf(targetTimes - times))));
         }
         if (isFinished()) {
             reset();
-            String notice = LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("summon.danmu.end-msg-format")
+            String notice = LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', LiveHelper.getInstance().getConfig().getString("danmu.end-msg-format")
                     .replaceAll("\\{昵称}", nickname)
                     .replaceAll("\\{活动名}", name));
-            Bukkit.getScheduler().runTask(LiveHelper.getInstance(), () -> Bukkit.getOnlinePlayers().forEach(player -> {
-                Location location = player.getLocation();
-                Random random = ThreadLocalRandom.current();
-                for (int i = 0; i < mobAmount; i++) {
-                    int radius = LiveHelper.getInstance().getConfig().getInt("summon.radius", 10);
-                    int x = location.getBlockX() + random.nextInt(radius - (-radius) + 1) + (-radius);
-                    int z = location.getBlockZ() + random.nextInt(radius - (-radius) + 1) + (-radius);
-                    int y = Utils.getHighestSolidBlockY(location.getWorld(), x, z) + 1;
-                    Location randomLocation = location.clone();
-                    randomLocation.setX(x);
-                    randomLocation.setY(y + 0.2);
-                    randomLocation.setZ(z);
-                    Entity entity = location.getWorld().spawnEntity(randomLocation, mobToSpawn);
-                    if (mobToSpawn == EntityType.ZOMBIE) {
-                        Zombie zombie = (Zombie) entity;
-                        zombie.getEquipment().setItemInMainHand(new ItemStack(Material.IRON_SWORD));
-                    }
+            List<Operation> operations = LiveHelper.getOperations(actionToDo);
+            Bukkit.getScheduler().runTask(LiveHelper.getInstance(), () -> {
+                if (operations != null) {
+                    operations.forEach(Operation::doIt);
+                    Bukkit.broadcastMessage(notice);
                 }
-            }));
-            Bukkit.broadcastMessage(notice);
+            });
         }
+    }
+
+    @Override
+    public String toString() {
+        return "DanmuSummonActivity{" +
+                "targetTimes=" + targetTimes +
+                ", id='" + id + '\'' +
+                ", name='" + name + '\'' +
+                ", cooldown=" + cooldown +
+                ", maxDuration=" + maxDuration +
+                ", actionToDo='" + actionToDo + '\'' +
+                ", keyword='" + keyword + '\'' +
+                ", times=" + times +
+                ", running=" + running +
+                ", lastFinishTime=" + lastFinishTime +
+                '}';
     }
 }

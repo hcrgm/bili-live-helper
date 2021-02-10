@@ -3,24 +3,21 @@ package net.windit.mcpl.livehelper;
 import net.windit.bililive.API;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.util.List;
-import java.util.Random;
 
 public class GetFollowersAndSpawnTask implements Runnable {
 
     private final long uid;
-    private final Random random = new Random();
+    private final String actionToDo;
     private final Plugin plugin;
     private int lastFollowers = -1;
 
-    public GetFollowersAndSpawnTask(long uid) {
+    public GetFollowersAndSpawnTask(long uid, String actionToDo) {
         this.uid = uid;
+        this.actionToDo = actionToDo;
         this.plugin = LiveHelper.getInstance();
     }
 
@@ -37,33 +34,16 @@ public class GetFollowersAndSpawnTask implements Runnable {
                 int delta = followers - lastFollowers;
                 Player player = Bukkit.getPlayerExact(plugin.getConfig().getString("host_playername"));
                 if (player != null) {
-                    Location location = player.getLocation();
-                    List<String> mobs = plugin.getConfig().getConfigurationSection("summon").getStringList("follow.mobs");
                     Bukkit.getScheduler().runTask(LiveHelper.getInstance(), () -> {
-                        World world = Bukkit.getWorld(plugin.getConfig().getString("summon.world", "world"));
-                        if (world == null) {
-                            world = Bukkit.getWorld("world");
-                        }
-                        if (world != null) {
+                        List<Operation> operations = LiveHelper.getOperations(actionToDo);
+                        if (operations != null) {
                             for (int i = 0; i < delta; i++) {
-                                EntityType type = EntityType.fromName(mobs.get(random.nextInt(mobs.size())));
-                                if (type != null) {
-                                    // 在一个圆的区域内随机生成, 相对圆心的x,z坐标偏移量: [-radius,radius]
-                                    int radius = plugin.getConfig().getInt("summon.radius", 10);
-                                    int x = location.getBlockX() + random.nextInt(radius - (-radius) + 1) + (-radius);
-                                    int z = location.getBlockZ() + random.nextInt(radius - (-radius) + 1) + (-radius);
-                                    int y = Utils.getHighestSolidBlockY(location.getWorld(), x, z) + 1;
-                                    Location randomLocation = location.clone();
-                                    randomLocation.setX(x);
-                                    randomLocation.setY(y + 0.2);
-                                    randomLocation.setZ(z);
-                                    world.spawnEntity(randomLocation, type);
-                                }
+                                operations.forEach(Operation::doIt);
                             }
                         }
                     });
                 }
-                Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("fans_grow_msg")
+                Bukkit.broadcastMessage(LiveHelper.messagePrefix + ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("follow.msg")
                         .replaceAll("\\{昵称}", nickname)
                         .replaceAll("\\{涨粉数}", String.valueOf(delta))
                         .replaceAll("\\{当前粉丝数}", String.valueOf(followers))));

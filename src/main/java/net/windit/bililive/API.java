@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class API {
     public final static String BILI_ROOM_INIT_URI = "https://api.live.bilibili.com/room/v1/Room/room_init?id=";
     public final static String BILI_DANMU_CONF_URI = "https://api.live.bilibili.com/room/v1/Danmu/getConf?room_id=";
-    public final static String BILI_FOLLWERS_URI = "https://api.bilibili.com/x/relation/followers?vmid=";
+    public final static String BILI_FOLLOWERS_URI = "https://api.bilibili.com/x/relation/followers?vmid=";
     public final static String BILI_USER_CARD_URI = "https://api.bilibili.com/x/web-interface/card?mid=";
     public static final Gson gson = new Gson();
     public final static String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.146 Safari/537.36 Edg/88.0.705.62";
@@ -112,7 +112,7 @@ public final class API {
     @Deprecated
     public static int getFollowers(long uid) {
         int followers = -1;
-        String body = getURI(BILI_FOLLWERS_URI + uid);
+        String body = getURI(BILI_FOLLOWERS_URI + uid);
         if (body != null) {
             JsonObject object = (JsonObject) new JsonParser().parse(body);
             if (object.get("code").getAsInt() == 0) {

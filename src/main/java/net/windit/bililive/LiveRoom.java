@@ -28,8 +28,8 @@ public class LiveRoom extends WebSocketListener {
     private ScheduledFuture<?> heartBeatTask;
     private WebSocket ws;
     private Future<?> packetDeliveryTask;
-    private boolean reconnect;
-    private boolean closed;
+    private volatile boolean reconnect;
+    private volatile boolean closed;
     /**
      * B站服务器鉴权用, 未指定key或key无效服务器会拒绝连接
      */
@@ -124,9 +124,9 @@ public class LiveRoom extends WebSocketListener {
     }
 
     public void close() {
+        setReconnect(false);
         this.ws.close(1000, null);
         closed = true;
-        setReconnect(false);
     }
 
     public boolean isClosed() {
@@ -146,11 +146,6 @@ public class LiveRoom extends WebSocketListener {
             clean();
             return;
         }
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         if (failedTimes.getAndIncrement() != wsServers.size() - 1 && wsServers.size() > 1) {
             if (heartBeatTask != null) {
                 heartBeatTask.cancel(true);
@@ -167,6 +162,7 @@ public class LiveRoom extends WebSocketListener {
     }
 
     private void clean() {
+        closed = true;
         if (heartBeatTask != null) {
             heartBeatTask.cancel(true);
         }
@@ -210,17 +206,14 @@ public class LiveRoom extends WebSocketListener {
             if (packet.getOperation() == LivePacket.OPERATION_ENTER_ROOM_RESPONSE) {
                 API.debug(packet.getDecodedJSON().toString());
                 // 收到进房回应, 开始心跳任务
-                // TODO:进房回应json中有是否成功的标识,应先确认后再决定是否保持连接
+                // 没收到回应就是直接被服务器断开了, 可能是鉴权key有误(认证失败)或者数据格式有误
                 LiveRoom.this.heartBeatTask = executor.scheduleAtFixedRate(() -> {
                     ws.send(LivePacket.HEARTBEAT_PACKET_RAW);
                     API.debug("心跳包已发送");
-                    API.debug("本线程是" + Thread.currentThread().getName());
                 }, 1, 30, TimeUnit.SECONDS);
             } else if (packet.getOperation() == LivePacket.OPERATION_HEARTBEAT_RESPONSE) {
-                API.debug("收到心跳回复");
-                API.debug("本线程是" + Thread.currentThread().getName());
                 popular = ByteBuffer.wrap(packet.getBody()).getInt();
-                API.debug("人气值:" + popular);
+                API.debug("收到心跳回复.人气值:" + popular);
             }
         }
     }
