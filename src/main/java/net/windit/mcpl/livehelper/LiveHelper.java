@@ -3,6 +3,7 @@ package net.windit.mcpl.livehelper;
 import net.windit.bililive.API;
 import net.windit.bililive.LiveException;
 import net.windit.bililive.LiveRoom;
+import net.windit.mcpl.livehelper.operation.Operation;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -129,7 +130,7 @@ public final class LiveHelper extends JavaPlugin {
                         if (parts.length > 1) {
                             data = x.substring(x.indexOf(':') + 1);
                         }
-                        Operation operation = new Operation(type, data);
+                        Operation operation = type.createOperation(data);
                         operations.add(operation);
                     }
                 }
